@@ -4,6 +4,10 @@
 
 > Trust is consistency, compounded by time. A rate, not a state.
 
+**See it live: [vincprotocol.org](https://vincprotocol.org)** — a running registry whose
+genesis chain carries a human, an AI agent, an organisation, and two devices, every
+entry signed and hash-linked, every trust rate computed in the open.
+
 As AI agents become economic actors, one question decides whether that economy is
 governable: **which entity acted, under whose authority, and how consistent has it been
 over how long?** The Witness Protocol answers it with three primitives — `register`,
