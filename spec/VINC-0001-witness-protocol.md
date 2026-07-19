@@ -2,6 +2,60 @@
 
 **Version:** 0.1 draft · **Status:** private (Gate G1) · **Public name:** pending (L1)
 
+## 0. Positioning — the witness stand, not the bench
+
+The Witness Protocol will be mistaken for two things it is not: a toy, and a tyranny.
+This section exists to prevent both, and should be read before the mechanics.
+
+**What law does, in four jobs:** sets norms (what is allowed), adjudicates (was a norm
+broken in this case), enforces (consequences follow), and holds legitimacy (why the
+above is accepted). Vinc touches three of these. It must never touch the fourth the way
+a state does.
+
+**Where Vinc fits — and it is a large space:**
+
+1. **The evidence layer.** Legal and institutional systems run on testimony that a
+   single authority can later reclassify under pressure — attestation without
+   verification infrastructure. Vinc is the un-rewritable, attributable record that
+   layer has always lacked. It does not judge; it makes *who attested what, when*
+   impossible to quietly alter. Every adjudicating body is downstream of this and none
+   possess it.
+2. **Private ordering.** Most enforceable norms are not the state: merchant law, guilds,
+   credit ratings, professional bodies, marketplace reputation, certification. These run
+   on reputation and exclusion, predate state law by millennia, and coexist with it.
+   Vinc is a general substrate for such opt-in communities — the ISO/certification model,
+   where a body defines the norm and Vinc makes compliance checkable.
+3. **The agent frontier.** Human law assumes human deterrents — incarceration, shame,
+   ruin — that autonomous software actors do not feel. An agent cannot be jailed. It can
+   be bound to a human principal by delegation, have every action witnessed, and carry a
+   computed trust rate. For the agent economy, attestation may be the only regulatory
+   layer that physically functions.
+
+**Where Vinc stops — by design, not deficiency:**
+
+1. **It does not adjudicate contested truth.** It records the claim and the dispute; it
+   does not rule who is right, because a ruler is a capturable authority. For genuinely
+   contested facts it surfaces the disagreement and halts. Resolution-by-more-attestation
+   is majoritarian, and majorities are what real due process exists to restrain. The
+   challenge window (§10.1) and dispute mechanism (§10.2) are proto-due-process; they are
+   not due process.
+2. **It does not wield coercive force.** Its only sanction is reputational exclusion —
+   potent in opt-in economic life, inert against those indifferent to their rate, those
+   powerful enough to ignore exclusion, and harms for which reputation damage is not
+   remotely proportionate. Reputation cannot price violence.
+3. **It refuses to become a universal score.** A mandatory, cross-domain, always-on
+   reputation enforced by exclusion is a control grid. The only things separating this
+   protocol from that outcome are architectural and load-bearing: **open, forkable,
+   domain-scoped, user-held keys, no central arbiter, disputable, opt-in.** These are not
+   features to be traded away for convenience. Removing any of them converts the witness
+   stand into the panopticon.
+
+**The claim that holds:** law tells you what happens after trust breaks; Vinc measures
+trust before it breaks and records the break when it happens. It sits *upstream* of law,
+not in its chair — the witness stand, the merchant's ledger, and the agent's leash,
+three things every legal order assumes and none has built. It is not the judge, the
+police, or the sovereign. The day it claims to be, it should be shut down.
+
 ## 1. Purpose
 
 A minimal protocol for attributable action: any entity — human, AI agent, device,
