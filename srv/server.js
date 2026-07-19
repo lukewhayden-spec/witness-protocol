@@ -70,6 +70,13 @@ const server = http.createServer((req, res) => {
     const from = parseInt(u.searchParams.get('from') || '0', 10);
     return json(res, 200, { entries: reg.log.slice(from, from + 500), total: reg.log.length });
   }
+  if (req.method === 'GET' && u.pathname === '/about') {
+    try {
+      const html = fs.readFileSync(path.join(__dirname, 'about.html'));
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      return res.end(html);
+    } catch { return json(res, 404, { error: 'about page not installed' }); }
+  }
   if (req.method === 'GET' && u.pathname === '/join') {
     try {
       const html = fs.readFileSync(path.join(__dirname, 'join.html'));

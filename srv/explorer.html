@@ -30,7 +30,7 @@ h2 { font-size:1rem; margin:26px 0 10px; }
 </head>
 <body>
 <h1>Witness Protocol</h1>
-<div class="tag">a live trust registry · <a href="https://github.com/lukewhayden-spec/witness-protocol" rel="noopener">open protocol (VINC-0001)</a></div>
+<div class="tag">a live trust registry · <a href="/about">what is this?</a> · <a href="https://github.com/lukewhayden-spec/witness-protocol" rel="noopener">open protocol (VINC-0001)</a></div>
 <div class="banner">
 Every entity below registered itself with a key it alone holds. Every event was signed by
 a witness and hash-chained into an append-only log. The trust rate is computed — consistency,
@@ -87,12 +87,20 @@ const when = (iso) => { const d = new Date(iso); const mins = (Date.now() - d) /
   }
   $('entities').innerHTML = entHtml || '<div class="card">none yet</div>';
 
+  const disputedIds = new Set(all.filter(e => e.object.type === 'dispute').map(e => e.object.attestation_id));
+  const CHALLENGE_DAYS = 7;
   const atts = all.filter(e => e.object.type === 'attestation').reverse().slice(0, 40);
   $('events').innerHTML = atts.map(e => { const o = e.object;
     const oc = o.outcome === 'fulfilled' ? 'f' : o.outcome === 'breached' ? 'b' : 'n';
+    const ageDays = (Date.now() - Date.parse(o.at)) / 86400000;
+    let badge = '';
+    if (o.outcome === 'breached' && ageDays < CHALLENGE_DAYS && !disputedIds.has(o.id))
+      badge = ` <span class="n">· pending — subject has ${Math.ceil(CHALLENGE_DAYS - ageDays)} day(s) to dispute; scores nothing until then</span>`;
+    if (disputedIds.has(o.id))
+      badge = ' <span class="n">· CONTESTED — disputed by its subject; carries half weight, permanently</span>';
     return `<div class="evt"><span class="${oc}">${o.outcome}</span> · ${o.att_type} ·
       subject <span class="mono">${short(o.subject)}</span> ·
-      witnessed by ${o.witnesses.map(w => `<span class="mono">${short(w.vid)}</span>`).join(', ')}
+      witnessed by ${o.witnesses.map(w => `<span class="mono">${short(w.vid)}</span>`).join(', ')}${badge}
       <div class="time">seq ${e.seq} · ${when(o.at)}</div></div>`;
   }).join('') || 'no witnessed events yet';
 })().catch(e => { $('reg').textContent = 'failed to load: ' + e.message; });

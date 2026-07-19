@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What is this? — Witness Protocol</title>
+<style>
+:root { --fg:#111; --mut:#777; --line:#ddd; --card:#fafafa; --acc:#1a4fd6; }
+@media (prefers-color-scheme: dark) { :root { --fg:#eee; --mut:#999; --line:#2c2c2c; --card:#151515; --acc:#7aa2ff; } body { background:#0b0b0b; } }
+* { box-sizing:border-box; }
+body { font-family:-apple-system,system-ui,sans-serif; color:var(--fg); margin:0; padding:24px 18px 60px; max-width:640px; margin-inline:auto; line-height:1.65; }
+h1 { font-size:1.5rem; margin:0 0 4px; letter-spacing:-.01em; }
+.tag { color:var(--mut); font-size:.85rem; margin-bottom:22px; }
+h2 { font-size:1.05rem; margin:30px 0 8px; }
+p { margin:0 0 14px; }
+.q { border-left:3px solid var(--line); padding:2px 0 2px 14px; color:var(--mut); font-style:italic; margin:18px 0; }
+a { color:var(--acc); text-decoration:none; }
+.join { display:inline-block; margin-top:8px; padding:10px 18px; border-radius:10px; background:var(--fg); color:var(--card); text-decoration:none; font-size:.9rem; }
+.mono { font-family:ui-monospace,Menlo,monospace; font-size:.8rem; }
+.foot { margin-top:36px; font-size:.78rem; color:var(--mut); border-top:1px solid var(--line); padding-top:14px; }
+</style>
+</head>
+<body>
+<h1>What is this?</h1>
+<div class="tag">The Witness Protocol · an open standard for computable trust · <a href="/">back to the chain</a></div>
+
+<h2>The problem</h2>
+<p>Almost everything you do online runs on <em>hope</em>. You hope the seller is real.
+You hope the reviewer isn't paid. You hope the "support" email isn't a scam. You hope
+the AI you're talking to answers to somebody. There's infrastructure for moving money
+and infrastructure for moving messages — but no infrastructure for trust. You just
+guess, and sometimes you get burned, and the person who burned you carries nothing
+forward. Their next victim starts from hope too.</p>
+
+<h2>The idea</h2>
+<div class="q">Trust is consistency, compounded by time. A rate, not a state.</div>
+<p>That's how trust actually works between people — you trust your mate because he's
+shown up reliably for twenty years, not because he says he's reliable. This protocol
+makes that measurable. Any entity — a person, an AI agent, a device, an organisation —
+gets an identity it alone controls, and its actions get <strong>witnessed</strong>:
+signed statements from others, chained into a permanent public log. From that record,
+anyone can compute a trust rate. It grows slowly with consistent behaviour, craters
+when trust is broken, rebuilds slower than it fell, and decays if you disappear.
+Nobody assigns it. Nobody can edit it. It's arithmetic on evidence.</p>
+
+<h2>What keeps it honest</h2>
+<p>Accusations are claims, not verdicts. A claim of broken trust costs nothing for
+seven days, during which the accused can dispute it — and a disputed claim carries
+half weight, with the disagreement itself recorded forever on both parties' histories.
+You can't buy tenure, you can't farm the score with fake volume, you can't delete your
+past, and lying as a witness stakes your own rate. The rules bind everyone identically,
+including the people who built this — the first entity ever constrained by this
+protocol was its own founder.</p>
+
+<h2>If you just joined</h2>
+<p>Your device created its own cryptographic key — it never left your hands — and
+registered on the chain. You're early: the network is days old, and honestly, the
+benefit to you today is small. What you own is a place in the genesis of the thing and
+an identity whose trust can only be earned the slow way — which is the only way that
+means anything.</p>
+
+<h2>The bones</h2>
+<p>Open protocol, open source, royalty-free patent pledge (AU provisional 2026906417).
+Not a blockchain, not a token, nothing for sale. Three operations —
+<span class="mono">register · witness · verify</span> — and one idea old as a
+handshake, finally countable.</p>
+
+<a class="join" href="/join">Join the registry →</a>
+&nbsp; <a class="join" href="https://github.com/lukewhayden-spec/witness-protocol">Read the code →</a>
+
+<div class="foot">Stewarded by Vinc · Melbourne, Australia · the log remembers so nobody has to.</div>
+</body>
+</html>
