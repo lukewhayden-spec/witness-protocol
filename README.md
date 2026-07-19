@@ -29,6 +29,28 @@ anyone, arbitrated by no one.
 node ref/test.js
 ```
 
+## Run a registry
+
+```
+node srv/server.js --port 8140
+```
+
+Then, from any machine that can reach it:
+
+```
+node srv/client.js keygen alice
+node srv/client.js register http://localhost:8140 alice human
+node srv/client.js keygen bot
+node srv/client.js register http://localhost:8140 bot agent
+node srv/client.js delegate http://localhost:8140 alice bot "email:send" 90
+node srv/client.js witness  http://localhost:8140 alice <bot-vid> task.completion fulfilled 1 "did the thing"
+node srv/client.js verify   http://localhost:8140 <bot-vid>
+```
+
+Private keys never leave the client; only signed objects travel. The registry is itself
+a registered entity in its own log, and signs every checkpoint it serves. Integration
+tests: `node srv/test-wire.js`.
+
 Watch trust build slowly over two simulated years, crater on a single breach, rebuild
 at a fraction of the pace it was lost, and watch a sybil earn nothing from volume and a
 dormant entity decay to zero. Tamper with one byte of the log and watch the chain

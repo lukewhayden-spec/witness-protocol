@@ -155,6 +155,41 @@ class Registry {
   }
 }
 
+// ---------- wire path: accept externally-signed objects (clients sign, registry validates) ----------
+Registry.prototype.registerSigned = function (rec, now) {
+  if (rec.type !== 'entity') throw new Error('not an entity record');
+  const { sig, ...body } = rec;
+  if (!sig) throw new Error('missing self-signature');
+  if (rec.vid !== vidOf(rec.class, rec.pubkey)) throw new Error('vid does not derive from pubkey');
+  if (!verifySig(rec.pubkey, body, sig)) throw new Error('bad self-signature');
+  if (this.entities.has(rec.vid)) throw new Error('already registered');
+  this.entities.set(rec.vid, rec);
+  this.keys.set(rec.vid, rec.pubkey);
+  return this._append(rec, now);
+};
+Registry.prototype.witnessSigned = function (att, now) {
+  if (att.type !== 'attestation') throw new Error('not an attestation');
+  const { id, witnesses, ...body } = att;
+  if (!witnesses || !witnesses.length) throw new Error('no witnesses: no single witness ever means at least one');
+  if (id !== b64u(sha256(canon(body)))) throw new Error('attestation id does not match body');
+  if (!this.entities.has(att.subject)) throw new Error('unregistered subject');
+  if (!['fulfilled', 'breached', 'neutral'].includes(att.outcome)) throw new Error('bad outcome');
+  if (!(att.weight > 0)) throw new Error('bad weight');
+  for (const w of witnesses) {
+    if (!this.entities.has(w.vid)) throw new Error('unregistered witness: ' + w.vid);
+    if (!verifySig(this.keys.get(w.vid), body, w.sig)) throw new Error('bad witness signature: ' + w.vid);
+  }
+  return this._append(att, now);
+};
+Registry.prototype.delegateSigned = function (d, now) {
+  if (d.type !== 'delegation') throw new Error('not a delegation');
+  const { sig, ...body } = d;
+  if (!this.entities.has(d.principal) || !this.entities.has(d.agent)) throw new Error('unregistered party');
+  if (!verifySig(this.keys.get(d.principal), body, sig)) throw new Error('bad principal signature');
+  if (!(Date.parse(d.expires) > Date.parse(d.not_before))) throw new Error('expiry precedes not_before');
+  return this._append(d, now);
+};
+
 // ---------- persistence: reconstruct a registry from a serialized log ----------
 Registry.fromEntries = function (entries) {
   const reg = new Registry();
