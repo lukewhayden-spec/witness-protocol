@@ -53,6 +53,26 @@ const cli = (...args) => execFileSync('node', [path.join(__dirname, 'client.js')
     const cp = await (await fetch(S + '/checkpoint')).json();
     ok(cp.sig && cp.root && cp.seq >= 4, 'signed checkpoint served');
 
+    // dispute over the wire: file a breach against alice, alice disputes it
+    const wk = JSON.parse(fs.readFileSync(path.join(KEYDIR, 'w-bot.json')));
+    const breachBody = { type: 'attestation', spec: 'VINC-0001/0.3', subject: A, att_type: 'debt.unpaid',
+      outcome: 'breached', weight: 5, payload_hash: null, at: new Date().toISOString() };
+    const { loadKeypair } = require('../ref/vinc.js');
+    const bkp = loadKeypair(wk);
+    const bsig = b64u(crypto.sign(null, Buffer.from(canon(breachBody)), bkp.privateKey));
+    const breach = { ...breachBody, id: b64u(sha(canon(breachBody))), witnesses: [{ vid: B, sig: bsig }] };
+    let br = await fetch(S + '/witness', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(breach) });
+    ok(br.status === 200, 'breach attestation accepted (validly signed claims are admissible)');
+    const ak = loadKeypair(JSON.parse(fs.readFileSync(path.join(KEYDIR, 'w-alice.json'))));
+    const dBody = { type: 'dispute', spec: 'VINC-0001/0.3', attestation_id: breach.id, disputant: A, evidence_hash: null, at: new Date().toISOString() };
+    const dsig = b64u(crypto.sign(null, Buffer.from(canon(dBody)), ak.privateKey));
+    br = await fetch(S + '/dispute', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...dBody, sig: dsig }) });
+    ok(br.status === 200, 'subject disputed the breach over the wire');
+    const dBad = { type: 'dispute', spec: 'VINC-0001/0.3', attestation_id: breach.id, disputant: B, evidence_hash: null, at: new Date().toISOString() };
+    const dBadSig = b64u(crypto.sign(null, Buffer.from(canon(dBad)), bkp.privateKey));
+    br = await fetch(S + '/dispute', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...dBad, sig: dBadSig }) });
+    ok(br.status === 422, 'non-subject dispute rejected');
+
     // persistence: restart server, log must reload intact
     srv.kill(); await new Promise(r2 => setTimeout(r2, 300));
     const srv2 = spawn('node', [path.join(__dirname, 'server.js'), '--port', String(PORT), '--data', DATA], { stdio: 'ignore' });

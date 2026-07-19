@@ -189,7 +189,57 @@ computable trust over witnessed time.
   permanent, not that it is impossible. Stated plainly because overclaiming here is how
   trust infrastructure dies.
 
-## 10. Versioning
+## 10. Adversarial attestation and dispute
+
+The protocol's primary attack surface is not cryptographic. It is **truthful-looking
+malice**: validly signed attestations whose content is false, one-sided, or coercive.
+Named threats:
+
+- **T1 — One-sided breach.** A genuine falling-out filed by the angry party, in their
+  framing, with no voice for the subject.
+- **T2 — Power asymmetry.** A high-rate party (landlord, employer, platform) can breach
+  a low-rate party consequentially; the reverse carries little weight. Unmitigated,
+  the protocol industrialises the asymmetry it exists to expose.
+- **T3 — Pile-on.** Multiple real identities attesting the same falsehood.
+- **T4 — Shakedown.** "Pay, or I file." Extortion with a clean audit trail.
+
+Design stance: an attestation is a **claim, not a verdict**. Mechanisms:
+
+### 10.1 Challenge window (v0.3, normative)
+A `breached` attestation contributes nothing to the subject's rate until it is
+`challenge_days` old (reference: 7 days). The window is the subject's opportunity to
+dispute before damage lands. Cost: genuine breaches punish late. Accepted: a false
+verdict that lands instantly is worse than a true one that lands in a week.
+
+### 10.2 Dispute operation (v0.3, normative)
+A first-class log object: the **subject** of an attestation MAY file a signed dispute
+referencing the attestation id, with optional evidence hash. While an attestation is
+disputed, its scoring weight is multiplied by `dispute_discount` (reference: 0.5).
+Disputes are permanent log entries — the disagreement itself becomes part of both
+parties' witnessed history, visible to any relying party. Resolution is not
+adjudicated by the registry: it emerges from further attestations (counter-witnesses,
+co-signed settlements), never from editing history.
+
+### 10.3 Roadmap (v0.4, specified intent — not yet normative)
+- **Filer stake:** filing a breach places a fraction of the filer's own rate at risk,
+  released if the breach stands unchallenged, forfeited if contradicted by
+  preponderant co-witnessed evidence (extends the witness-contradiction rule of §4.2).
+- **Mutual-origination records:** obligations (loans, deals) SHOULD be registered as
+  records co-signed by both parties at origination; a breach filed against a co-signed
+  record carries full weight, a breach against an unacknowledged obligation is capped.
+  Consent at origination is the difference between evidence and accusation.
+- **Domain scoping:** rates computed per attestation domain (personal, commercial,
+  operational), preventing context collapse where a personal grudge destroys a
+  professional record.
+
+### 10.4 The honest limit, restated
+The protocol cannot make people less vindictive. It makes malice **attributable**
+(signed), **costly** (staked, contradictable), **contestable** (disputed in the same
+ledger, at parity), and **scoped** (bounded blast radius). The alternative — the
+unsigned review, the whisper network, the unaccountable report — offers its targets
+none of these. That is the bar, and the only one claimed.
+
+## 11. Versioning
 
 Spec versions are append-only; wire objects carry `spec: "VINC-0001/0.1"`. Breaking
 changes require a new document number, never a silent edit. The spec obeys its own

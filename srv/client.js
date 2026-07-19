@@ -59,6 +59,14 @@ async function post(server, ep, obj) {
     const att = { ...body, id: b64u(sha256(canon(body))), witnesses: [{ vid: w.vid, sig: sign(w.kp, body) }] };
     const out = await post(server, '/witness', att);
     console.log(`witnessed (${outcome}, w=${weight}) seq ${out.receipt.seq}`);
+  } else if (cmd === 'dispute') {
+    const [server, name, attId, memo] = a;
+    const w = loadK(name);
+    const d = { type: 'dispute', spec: 'VINC-0001/0.3', attestation_id: attId, disputant: w.vid,
+      evidence_hash: memo ? b64u(sha256(memo)) : null, at: new Date().toISOString() };
+    d.sig = sign(w.kp, d);
+    const out = await post(server, '/dispute', d);
+    console.log(`disputed ${attId.slice(0, 16)}… seq ${out.receipt.seq} — the contest is now part of the permanent record`);
   } else if (cmd === 'verify') {
     const [server, vid] = a;
     const r = await fetch(`${server}/verify/${encodeURIComponent(vid)}`);

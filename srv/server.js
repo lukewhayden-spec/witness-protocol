@@ -86,7 +86,7 @@ const server = http.createServer((req, res) => {
   }
   if (req.method === 'GET' && u.pathname === '/') {
     return json(res, 200, { protocol: 'VINC-0001/0.2', registry: regVid, entries: reg.log.length,
-      params_version: PARAMS.version, endpoints: ['POST /register', 'POST /witness', 'POST /delegate', 'GET /verify/{vid}', 'GET /log?from=n', 'GET /checkpoint'] });
+      params_version: PARAMS.version, endpoints: ['POST /register', 'POST /witness', 'POST /delegate', 'POST /dispute', 'GET /verify/{vid}', 'GET /log?from=n', 'GET /checkpoint'] });
   }
 
   if (req.method === 'POST') {
@@ -100,6 +100,7 @@ const server = http.createServer((req, res) => {
         if (u.pathname === '/register') receipt = reg.registerSigned(obj, Date.now());
         else if (u.pathname === '/witness') receipt = reg.witnessSigned(obj, Date.now());
         else if (u.pathname === '/delegate') receipt = reg.delegateSigned(obj, Date.now());
+        else if (u.pathname === '/dispute') receipt = reg.disputeSigned(obj, Date.now());
         else return json(res, 404, { error: 'unknown endpoint' });
         persist();
         return json(res, 200, { ok: true, receipt, checkpoint: checkpoint() });

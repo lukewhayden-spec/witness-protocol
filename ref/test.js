@@ -1,7 +1,9 @@
 // test.js — VINC-0001 scenario tests. Run: node ref/test.js
 'use strict';
-const { Registry, newKeypair, DAY } = require('./vinc.js');
+const { Registry, newKeypair, canon, DAY } = require('./vinc.js');
+const crypto = require('crypto');
 const assert = require('assert');
+const signObj = (kp, body) => Buffer.from(crypto.sign(null, Buffer.from(canon(body)), kp.privateKey)).toString('base64url');
 
 let pass = 0;
 const ok = (cond, name) => { assert(cond, name); console.log('  ✓ ' + name); pass++; };
@@ -32,11 +34,14 @@ console.log(`    day 30: ${r30.toFixed(3)}  day 180: ${r180.toFixed(3)}  day 365
 ok(r30 < 0.1, 'new entity capped low despite perfect behaviour');
 ok(r30 < r180 && r180 < r365 && r365 < r730, 'monotone growth under consistency');
 
-console.log('\n[4] Trust craters instantly (R2): one serious breach, w=50, day 731');
+console.log('\n[4] Breach with challenge window (R2 + spec §10.1): w=50 breach at day 731');
 reg.witness(vAgent, 'payment.dispute', 'breached', 50, [{ vid: vLuke, kp: luke }], T0 + 731 * DAY);
-const rBreach = at(731);
-console.log(`    day 731 (post-breach): ${rBreach.toFixed(3)}  (was ${r730.toFixed(3)})`);
-ok(rBreach < r730 * 0.55, 'single breach removes >45% of a two-year rate');
+const rDuringWindow = at(732);
+console.log(`    day 732 (inside 7-day window): ${rDuringWindow.toFixed(3)}  (was ${r730.toFixed(3)})`);
+ok(Math.abs(rDuringWindow - at(730.9)) < 0.02, 'breach scores nothing inside the challenge window — subject has time to dispute');
+const rBreach = at(739);
+console.log(`    day 739 (window passed, undisputed): ${rBreach.toFixed(3)}`);
+ok(rBreach < r730 * 0.55, 'undisputed breach then removes >45% of a two-year rate');
 
 console.log('\n[5] Trust rebuilds slowly (R3): flawless daily work resumes');
 for (let d = 732; d <= 1095; d++)
@@ -87,10 +92,35 @@ console.log(`    burst sybil, one year dormant: ${rSybilLater.toFixed(4)}`);
 ok(rSybilLater < 0.05, 'burst-then-silence does NOT inflate with calendar time');
 ok(reg.trustRate(vSybil, T0 + (1095 + 730) * DAY).rate < rSybilLater + 0.01, 'dormant rate does not grow');
 
-console.log('\n[11] Trajectory table for spec/trust-rate.md §5 (daily work continues, breach w=50 at day 731)');
+console.log('\n[12] Dispute mechanics (spec §10.2): the Olivier scenario');
+// Two victims, identical malicious breaches; one disputes, one does not.
+const mal = newKeypair(), v1 = newKeypair(), v2 = newKeypair();
+const vMal = reg.register('human', mal, T0 + 1100 * DAY).vid;
+const vV1 = reg.register('human', v1, T0 + 1100 * DAY).vid;
+const vV2 = reg.register('human', v2, T0 + 1100 * DAY).vid;
+for (let d = 1101; d <= 1200; d++) {
+  reg.witness(vV1, 'task.completion', 'fulfilled', 1, [{ vid: vAls, kp: als }], T0 + d * DAY);
+  reg.witness(vV2, 'task.completion', 'fulfilled', 1, [{ vid: vAls, kp: als }], T0 + d * DAY);
+}
+const b1 = reg.witness(vV1, 'debt.unpaid', 'breached', 10, [{ vid: vMal, kp: mal }], T0 + 1201 * DAY).attestation;
+const b2 = reg.witness(vV2, 'debt.unpaid', 'breached', 10, [{ vid: vMal, kp: mal }], T0 + 1201 * DAY).attestation;
+// V1 disputes within the window
+const dBody = { type: 'dispute', spec: 'VINC-0001/0.3', attestation_id: b1.id, disputant: vV1,
+  evidence_hash: null, at: new Date(T0 + 1203 * DAY).toISOString() };
+reg.disputeSigned({ ...dBody, sig: signObj(v1, dBody) }, T0 + 1203 * DAY);
+const rV1 = reg.trustRate(vV1, T0 + 1215 * DAY).rate;
+const rV2 = reg.trustRate(vV2, T0 + 1215 * DAY).rate;
+console.log(`    disputed victim: ${rV1.toFixed(3)} · undisputed victim: ${rV2.toFixed(3)}`);
+ok(rV1 > rV2, 'disputing a breach softens its impact — the contest is priced in');
+let threw = false;
+try { const x = { type: 'dispute', spec: 'VINC-0001/0.3', attestation_id: b2.id, disputant: vMal, evidence_hash: null, at: new Date(T0 + 1204 * DAY).toISOString() };
+  reg.disputeSigned({ ...x, sig: signObj(mal, x) }, T0 + 1204 * DAY); } catch (e) { threw = true; }
+ok(threw, 'only the SUBJECT of an attestation may dispute it');
+
+console.log('\n[13] Trajectory table for spec/trust-rate.md §5 (daily work continues, breach w=50 at day 731)');
 for (let d = 1096; d <= 2191; d++)
   reg.witness(vAgent, 'task.completion', 'fulfilled', 1, [{ vid: vAls, kp: als }], T0 + d * DAY);
-for (const d of [30, 180, 365, 730, 731, 1095, 1825, 2191])
+for (const d of [30, 180, 365, 730, 732, 739, 1095, 1825, 2191])
   console.log(`    day ${String(d).padEnd(5)} R = ${at(d).toFixed(3)}`);
 
 console.log(`\nAll ${pass} assertions passed.`);

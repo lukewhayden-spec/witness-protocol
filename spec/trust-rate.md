@@ -72,6 +72,8 @@ An entity that stops being witnessed decays toward 0 with half-life H_r, by R7.
 | k | 8 | Breach amplifier. One breach cancels ~8 equal-weight recent fulfillments. |
 | τ | 365 days | Tenure constant. One year of witnessed presence → T ≈ 0.63; three years → T ≈ 0.95. |
 | H_r | 90 days | Freshness half-life. Three months of silence halves the rate ×0.5... continued silence → 0. Domain profiles may lengthen this for entity classes with legitimately sparse cadence (humans) and shorten it for agents. |
+| challenge_days | 7 | Breaches score nothing until this old (VINC-0001 §10.1). The subject's window to dispute before damage lands. A false verdict landing instantly is worse than a true one landing in a week. |
+| dispute_discount | 0.5 | Disputed attestations carry half weight (VINC-0001 §10.2). The contest is permanent, visible, and priced — resolved by further attestations, never by editing history. |
 | ε | 10⁻⁹ | Division guard. |
 
 Parameters are versioned in the log (`params_version`); a verifier always knows which
@@ -92,7 +94,8 @@ implementation (`node ref/test.js`, scenario 11) — the code, not this table, i
 | 180 | 0.388 | Half a year of daily consistency. |
 | 365 | 0.631 | Tenure factor now dominates; consistency is saturated. |
 | 730 | 0.864 | Two years. |
-| 731 | **0.327** | The breach. 62% of a two-year rate gone in one event (R2). |
+| 732 | 0.865 | Breach filed, inside the 7-day challenge window: no effect yet — the accused gets a voice before the verdict (§10.1). |
+| 739 | **0.330** | Window passed, undisputed: 62% of a two-year rate gone (R2). Had the subject disputed, the blow would land at half weight. |
 | 1095 | 0.411 | A year of flawless daily work later — barely a third of the way back (R3). |
 | 1825 | 0.519 | Three years of penance: still below its own day-365 self. |
 | 2191 | 0.564 | Four years post-breach: memory has faded, not vanished. |

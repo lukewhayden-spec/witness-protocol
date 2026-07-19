@@ -27,14 +27,16 @@ function verifySig(pub, body, sig) {
 
 // ---------- trust-rate parameters (profile v0 — provisional, Gate G2) ----------
 const PARAMS = {
-  version: 'v0.2',
-  H_f: 180,        // fulfillment half-life, days
-  H_b: 1460,       // breach half-life, days
-  k: 8,            // breach amplifier
-  tau: 365,        // tenure constant, days
-  H_r: 90,         // freshness half-life, days — dormancy decays the rate (R7)
+  version: 'v0.3',
+  H_f: 180,            // fulfillment half-life, days
+  H_b: 1460,           // breach half-life, days
+  k: 8,                // breach amplifier
+  tau: 365,            // tenure constant, days
+  H_r: 90,             // freshness half-life, days — dormancy decays the rate (R7)
+  challenge_days: 7,   // breaches score nothing until this old — the subject's window to dispute (spec §10.1)
+  dispute_discount: 0.5, // disputed attestations carry half weight (spec §10.2)
   eps: 1e-9,
-  R_floor: 0.1,    // minimum witness weight multiplier
+  R_floor: 0.1,        // minimum witness weight multiplier
 };
 const DAY = 86400000;
 
@@ -86,7 +88,13 @@ class Registry {
   // ---------- trust rate (deterministic; anyone can replay this) ----------
   trustRate(vid, now, p = PARAMS) {
     let F = 0, B = 0, first = null, last = null;
-    const counts = { fulfilled: 0, breached: 0, neutral: 0 };
+    const counts = { fulfilled: 0, breached: 0, neutral: 0, disputed: 0 };
+    // pass 1: disputes visible at evaluation time (only the attestation's subject can dispute — validated at admission)
+    const disputed = new Set();
+    for (const e of this.log) {
+      const o = e.object;
+      if (o.type === 'dispute' && Date.parse(o.at) <= now) disputed.add(o.attestation_id);
+    }
     for (const e of this.log) {
       const o = e.object;
       if (o.type !== 'attestation' || o.subject !== vid) continue;
@@ -96,10 +104,14 @@ class Registry {
       if (last === null || t > last) last = t;
       counts[o.outcome] = (counts[o.outcome] || 0) + 1;
       if (o.outcome === 'neutral') continue;
+      const age = (now - t) / DAY;
+      // challenge window (spec §10.1): a breach scores nothing until old enough to have been disputable
+      if (o.outcome === 'breached' && age < p.challenge_days) continue;
       // witness-weight discount: attestation weight scaled by best witness rate at its time
       const wr = Math.max(...o.witnesses.map(w => this.trustRateShallow(w.vid, t, p)), p.R_floor);
-      const w = o.weight * Math.max(wr, p.R_floor);
-      const age = (now - t) / DAY;
+      let w = o.weight * Math.max(wr, p.R_floor);
+      // dispute discount (spec §10.2): contested claims carry half weight, permanently visible
+      if (disputed.has(o.id)) { w *= p.dispute_discount; counts.disputed++; }
       if (o.outcome === 'fulfilled') F += w * Math.pow(2, -age / p.H_f);
       else if (o.outcome === 'breached') B += w * Math.pow(2, -age / p.H_b);
     }
@@ -121,6 +133,7 @@ class Registry {
       if (first === null) first = t;
       if (last === null || t > last) last = t;
       const age = (now - t) / DAY;
+      if (o.outcome === 'breached' && age < p.challenge_days) continue; // §10.1 applies at all depths
       if (o.outcome === 'fulfilled') F += o.weight * Math.pow(2, -age / p.H_f);
       else B += o.weight * Math.pow(2, -age / p.H_b);
     }
@@ -181,6 +194,20 @@ Registry.prototype.witnessSigned = function (att, now) {
   }
   return this._append(att, now);
 };
+Registry.prototype.disputeSigned = function (d, now) {
+  if (d.type !== 'dispute') throw new Error('not a dispute');
+  const { sig, ...body } = d;
+  if (!sig) throw new Error('missing signature');
+  if (!this.entities.has(d.disputant)) throw new Error('unregistered disputant');
+  const target = this.log.find(e => e.object.type === 'attestation' && e.object.id === d.attestation_id);
+  if (!target) throw new Error('attestation not found: ' + d.attestation_id);
+  if (target.object.subject !== d.disputant) throw new Error('only the subject of an attestation may dispute it (spec §10.2)');
+  const dup = this.log.find(e => e.object.type === 'dispute' && e.object.attestation_id === d.attestation_id && e.object.disputant === d.disputant);
+  if (dup) throw new Error('already disputed');
+  if (!verifySig(this.keys.get(d.disputant), body, sig)) throw new Error('bad disputant signature');
+  return this._append(d, now);
+};
+
 Registry.prototype.delegateSigned = function (d, now) {
   if (d.type !== 'delegation') throw new Error('not a delegation');
   const { sig, ...body } = d;
