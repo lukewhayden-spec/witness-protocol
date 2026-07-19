@@ -21,9 +21,19 @@ fs.mkdirSync(DATA, { recursive: true });
 let reg, regKp, regVid;
 if (fs.existsSync(LOG)) {
   reg = Registry.fromEntries(fs.readFileSync(LOG, 'utf8').trim().split('\n').map(JSON.parse));
-  const stored = JSON.parse(fs.readFileSync(KEYS, 'utf8'));
-  regKp = loadKeypair(stored); regVid = stored.vid;
   console.log(`[boot] loaded log: ${reg.log.length} entries, chain ${reg.auditChain().ok ? 'intact' : 'BROKEN'}`);
+  if (fs.existsSync(KEYS)) {
+    const stored = JSON.parse(fs.readFileSync(KEYS, 'utf8'));
+    regKp = loadKeypair(stored); regVid = stored.vid;
+  } else {
+    // adopting an existing log (e.g. the genesis pilot): the registry registers itself into it
+    regKp = newKeypair();
+    const r = reg.register('org', regKp, Date.now());
+    regVid = r.vid;
+    fs.writeFileSync(KEYS, JSON.stringify({ vid: regVid, ...exportKeypair(regKp) }, null, 2), { mode: 0o600 });
+    persist();
+    console.log(`[boot] adopted existing log; registry self-registered: ${regVid}`);
+  }
 } else {
   reg = new Registry();
   regKp = newKeypair();
@@ -59,6 +69,13 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && u.pathname === '/log') {
     const from = parseInt(u.searchParams.get('from') || '0', 10);
     return json(res, 200, { entries: reg.log.slice(from, from + 500), total: reg.log.length });
+  }
+  if (req.method === 'GET' && u.pathname === '/join') {
+    try {
+      const html = fs.readFileSync(path.join(__dirname, 'join.html'));
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      return res.end(html);
+    } catch { return json(res, 404, { error: 'join page not installed' }); }
   }
   if (req.method === 'GET' && u.pathname === '/') {
     return json(res, 200, { protocol: 'VINC-0001/0.2', registry: regVid, entries: reg.log.length,
