@@ -77,6 +77,13 @@ const server = http.createServer((req, res) => {
       return res.end(html);
     } catch { return json(res, 404, { error: 'join page not installed' }); }
   }
+  if (req.method === 'GET' && u.pathname === '/' && String(req.headers.accept || '').includes('text/html')) {
+    try {
+      const html = fs.readFileSync(path.join(__dirname, 'explorer.html'));
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      return res.end(html);
+    } catch { /* fall through to JSON banner */ }
+  }
   if (req.method === 'GET' && u.pathname === '/') {
     return json(res, 200, { protocol: 'VINC-0001/0.2', registry: regVid, entries: reg.log.length,
       params_version: PARAMS.version, endpoints: ['POST /register', 'POST /witness', 'POST /delegate', 'GET /verify/{vid}', 'GET /log?from=n', 'GET /checkpoint'] });

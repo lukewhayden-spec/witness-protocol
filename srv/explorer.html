@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Witness Protocol — Registry Explorer</title>
+<style>
+:root { --fg:#111; --mut:#777; --line:#ddd; --card:#fafafa; --ok:#0a7a3d; --bad:#b3261e; --acc:#1a4fd6; }
+@media (prefers-color-scheme: dark) { :root { --fg:#eee; --mut:#999; --line:#2c2c2c; --card:#151515; --acc:#7aa2ff; } body { background:#0b0b0b; } }
+* { box-sizing:border-box; }
+body { font-family:-apple-system,system-ui,sans-serif; color:var(--fg); margin:0; padding:24px 18px 60px; max-width:760px; margin-inline:auto; }
+h1 { font-size:1.5rem; margin:0; letter-spacing:-.01em; }
+.tag { color:var(--mut); font-size:.85rem; margin:4px 0 6px; }
+.tag a { color:var(--acc); text-decoration:none; }
+.banner { font-size:.8rem; color:var(--mut); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin:14px 0; }
+.mono { font-family:ui-monospace,Menlo,monospace; font-size:.72rem; word-break:break-all; }
+h2 { font-size:1rem; margin:26px 0 10px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:10px; }
+.row { display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.cls { font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; padding:2px 8px; border:1px solid var(--line); border-radius:99px; color:var(--mut); }
+.rate { font-weight:700; font-variant-numeric:tabular-nums; }
+.evt { font-size:.82rem; padding:8px 0; border-top:1px solid var(--line); }
+.evt:first-of-type { border-top:none; }
+.f { color:var(--ok); font-weight:600; } .b { color:var(--bad); font-weight:600; } .n { color:var(--mut); font-weight:600; }
+.time { color:var(--mut); font-size:.72rem; }
+.foot { margin-top:34px; font-size:.78rem; color:var(--mut); line-height:1.6; }
+.foot a { color:var(--acc); text-decoration:none; }
+.join { display:inline-block; margin-top:10px; padding:10px 18px; border-radius:10px; background:var(--fg); color:var(--card); text-decoration:none; font-size:.9rem; }
+</style>
+</head>
+<body>
+<h1>Witness Protocol</h1>
+<div class="tag">a live trust registry · <a href="https://github.com/lukewhayden-spec/witness-protocol" rel="noopener">open protocol (VINC-0001)</a></div>
+<div class="banner">
+Every entity below registered itself with a key it alone holds. Every event was signed by
+a witness and hash-chained into an append-only log. The trust rate is computed — consistency,
+compounded by time, decayed by silence — never assigned. Verify any of it yourself:
+the <span class="mono">/log</span> and <span class="mono">/verify</span> endpoints serve raw, replayable data.
+</div>
+<div class="banner mono" id="reg">loading registry…</div>
+
+<h2>Entities on the chain</h2>
+<div id="entities">…</div>
+
+<h2>Witnessed events</h2>
+<div class="card" id="events">…</div>
+
+<div class="foot">
+This registry runs the open Witness Protocol: <span class="mono">register · witness · verify</span> —
+computable trust for humans, AI agents, devices, documents, and organisations.<br>
+Trust is consistency, compounded by time. A rate, not a state.<br>
+<a class="join" href="/join">Join this registry →</a>
+</div>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const short = (v) => v.length > 46 ? v.slice(0, 30) + '…' + v.slice(-8) : v;
+const when = (iso) => { const d = new Date(iso); const mins = (Date.now() - d) / 60000;
+  if (mins < 60) return Math.max(1, Math.round(mins)) + ' min ago';
+  if (mins < 1440) return Math.round(mins / 60) + ' h ago';
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); };
+
+(async () => {
+  const info = await (await fetch('/', { headers: { accept: 'application/json' } })).json();
+  const cp = await (await fetch('/checkpoint')).json();
+  $('reg').innerHTML = `registry ${short(info.registry)}<br>${info.entries} log entries · chain head ${cp.root.slice(0, 16)}… · checkpoint signed ${when(cp.at)}`;
+
+  let all = [], from = 0, total = 1;
+  while (from < total) {
+    const page = await (await fetch('/log?from=' + from)).json();
+    all = all.concat(page.entries); total = page.total; from = all.length;
+    if (page.entries.length === 0) break;
+  }
+
+  const ents = all.filter(e => e.object.type === 'entity').map(e => e.object);
+  let entHtml = '';
+  for (const o of ents) {
+    let v = null;
+    try { v = await (await fetch('/verify/' + encodeURIComponent(o.vid))).json(); } catch {}
+    entHtml += `<div class="card"><div class="row">
+      <span class="cls">${o.class}</span>
+      <span class="rate">${v ? v.trust_rate.toFixed(4) : '—'}</span></div>
+      <div class="mono">${o.vid}</div>
+      <div class="time">${v && v.first_witnessed ? 'first witnessed ' + when(v.first_witnessed) : 'registered, not yet witnessed'}
+      ${v ? ` · ${v.events.fulfilled || 0} fulfilled / ${v.events.breached || 0} breached` : ''}</div></div>`;
+  }
+  $('entities').innerHTML = entHtml || '<div class="card">none yet</div>';
+
+  const atts = all.filter(e => e.object.type === 'attestation').reverse().slice(0, 40);
+  $('events').innerHTML = atts.map(e => { const o = e.object;
+    const oc = o.outcome === 'fulfilled' ? 'f' : o.outcome === 'breached' ? 'b' : 'n';
+    return `<div class="evt"><span class="${oc}">${o.outcome}</span> · ${o.att_type} ·
+      subject <span class="mono">${short(o.subject)}</span> ·
+      witnessed by ${o.witnesses.map(w => `<span class="mono">${short(w.vid)}</span>`).join(', ')}
+      <div class="time">seq ${e.seq} · ${when(o.at)}</div></div>`;
+  }).join('') || 'no witnessed events yet';
+})().catch(e => { $('reg').textContent = 'failed to load: ' + e.message; });
+</script>
+</body>
+</html>
